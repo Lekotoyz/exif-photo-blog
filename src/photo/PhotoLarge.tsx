@@ -9,7 +9,6 @@ import {
   shouldShowFilmDataForPhoto,
   shouldShowLensDataForPhoto,
   shouldShowRecipeDataForPhoto,
-  titleForPhoto,
 } from '.';
 import AppGrid from '@/components/AppGrid';
 import ImageLarge from '@/components/image/ImageLarge';
@@ -51,6 +50,7 @@ import { lensFromPhoto } from '@/lens';
 import MaskedScroll from '@/components/MaskedScroll';
 import { useAppText } from '@/i18n/state/client';
 import { Album } from '@/album';
+import AdminPhotoStorageCheck from '@/admin/storage/AdminPhotoStorageCheck';
 
 export default function PhotoLarge({
   photo,
@@ -84,6 +84,7 @@ export default function PhotoLarge({
   includeFavoriteInAdminMenu,
   onVisible,
   showAdminKeyCommands,
+  showStorageCheck,
 }: {
   photo: Photo
   className?: string
@@ -116,6 +117,7 @@ export default function PhotoLarge({
   includeFavoriteInAdminMenu?: boolean
   onVisible?: () => void
   showAdminKeyCommands?: boolean
+  showStorageCheck?: boolean
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const refZoomControls = useRef<ZoomControlsRef>(null);
@@ -260,7 +262,6 @@ export default function PhotoLarge({
       photo,
       revalidatePhoto,
       includeFavorite: includeFavoriteInAdminMenu,
-      ariaLabel: `Admin menu for '${titleForPhoto(photo)}' photo`,
       showKeyCommands: showAdminKeyCommands,
     }} />;
 
@@ -483,6 +484,8 @@ export default function PhotoLarge({
                         photo={photo} 
                       />}
                   </div>
+                  {showStorageCheck &&
+                    <AdminPhotoStorageCheck photo={photo} />}
                 </div>
               </div>
             </DivDebugBaselineGrid>

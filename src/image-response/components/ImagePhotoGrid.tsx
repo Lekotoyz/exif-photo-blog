@@ -23,69 +23,109 @@ export default async function ImagePhotoGrid({
   { width: NextImageSize, widthArbitrary?: undefined } |
   { width?: undefined, widthArbitrary: number }
 ))) {
-  let count = photos.length;
-  if (photos.length >= 12) { count = 12; }
-  else if (photos.length >= 6) { count = 6; }
-  else if (photos.length >= 4) { count = 4; }
+
+  // 防止 photos 为 undefined/null
+  const safePhotos = Array.isArray(photos) ? photos.filter(Boolean) : [];
+
+  let count = safePhotos.length;
+
+  if (count >= 12) count = 12;
+  else if (count >= 6) count = 6;
+  else if (count >= 4) count = 4;
 
   const hasSplitLayout = count === 3;
 
-  const nextImageWidth: NextImageSize = count <= 2
-    ? width ?? 1080
-    : 640;
+  const nextImageWidth: NextImageSize =
+    count <= 2 ? (width ?? 1080) : 640;
 
-  const optimizedSuffix = count <= 2
-    ? 'lg'
-    : 'md';
+  const optimizedSuffix =
+    count <= 2 ? 'lg' : 'md';
 
   let rows = 1;
-  if (count > 12) { rows = 4; }
-  else if (count > 6) { rows = 3; }
-  else if (count >= 3) { rows = 2; }
+  if (count > 12) rows = 4;
+  else if (count > 6) rows = 3;
+  else if (count >= 3) rows = 2;
 
-  const imagesPerRow = Math.round(count / rows);
+  const imagesPerRow = Math.max(1, Math.round(count / rows));
 
-  const cellWidth = (
-    (width ?? widthArbitrary) / imagesPerRow -
-    (imagesPerRow - 1) * gap / (imagesPerRow)
-  );
-  const cellHeight= height / rows -
-    (rows - 1) * gap / rows;
+  const totalWidth = width ?? widthArbitrary ?? 1080;
 
-  const photoUrls = await getDataUrlsForPhotos(
-    photos,
+  const cellWidth =
+    totalWidth / imagesPerRow -
+    ((imagesPerRow - 1) * gap) / imagesPerRow;
+
+  const cellHeight =
+    height / rows -
+    ((rows - 1) * gap) / rows;
+
+  // 获取图片 data url
+  const rawPhotoUrls = await getDataUrlsForPhotos(
+    safePhotos,
     optimizedSuffix,
     nextImageWidth,
     IS_PREVIEW,
-  );
+  ).catch(() => []);
 
+  // 🔥 关键修复：过滤 undefined
+  const photoUrls = Array.isArray(rawPhotoUrls)
+    ? rawPhotoUrls.filter(Boolean)
+    : [];
+
+  // 🔥 关键修复：安全渲染函数
   const renderPhoto = (
-    { id, urlData }: typeof photoUrls[number],
+    photo: typeof photoUrls[number] | undefined,
     width: number,
     height: number,
-  ) =>
-    <div
-      key={id}
-      style={{
-        display: 'flex',
-        width,
-        height,
-        overflow: 'hidden',
-        filter: 'saturate(1.1)',
-      }}
-    >
-      <img {...{
-        src: urlData,
-        style: {
-          ...imageStyle,
-          width: '100%',
-          ...imagePosition === 'center' && {
-            height: '100%',
-          },
-          objectFit: 'cover',
-        },
-      }} />
-    </div>;
+  ) => {
+    if (!photo) return null;
+
+    const { id, urlData } = photo;
+
+    if (!id || !urlData) return null;
+
+    return (
+      <div
+        key={id}
+        style={{
+          display: 'flex',
+          width,
+          height,
+          overflow: 'hidden',
+          filter: 'saturate(1.1)',
+        }}
+      >
+        <img
+          src={urlData}
+          style={{
+            ...imageStyle,
+            width: '100%',
+            ...(imagePosition === 'center' && {
+              height: '100%',
+            }),
+            objectFit: 'cover',
+          }}
+        />
+      </div>
+    );
+  };
+
+  if (photoUrls.length === 0) {
+    return (
+      <div
+        style={{
+          width: totalWidth,
+          height,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 32,
+          opacity: 0.3,
+        }}
+      >
+        No images
+      </div>
+    );
+  }
 
   return (
     <div
@@ -99,29 +139,36 @@ export default async function ImagePhotoGrid({
     >
       {hasSplitLayout
         ? <>
-          {/* Large image (L) */}
-          <div style={{
-            display: 'flex',
-            width: cellWidth,
-            height: cellHeight * 2,
-          }}>
-            {renderPhoto(photoUrls[0], cellWidth, cellHeight * 2)}
-          </div>
-          {/* Small images (R) */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            width: cellWidth,
-            height: cellHeight,
-          }}>
-            {photoUrls.slice(1).map(photo =>
-              renderPhoto(photo, cellWidth, cellHeight),
+            {/* Large image */}
+            {photoUrls[0] && (
+              <div
+                style={{
+                  display: 'flex',
+                  width: cellWidth,
+                  height: cellHeight * 2,
+                }}
+              >
+                {renderPhoto(photoUrls[0], cellWidth, cellHeight * 2)}
+              </div>
             )}
-          </div>
-        </>
+
+            {/* Small images */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                width: cellWidth,
+                height: cellHeight,
+              }}
+            >
+              {photoUrls.slice(1, count).map(photo =>
+                renderPhoto(photo, cellWidth, cellHeight),
+              )}
+            </div>
+          </>
         : photoUrls.slice(0, count).map(photo =>
-          renderPhoto(photo, cellWidth, cellHeight),
-        )}
+            renderPhoto(photo, cellWidth, cellHeight),
+          )}
     </div>
   );
 }

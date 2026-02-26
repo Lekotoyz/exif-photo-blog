@@ -13,29 +13,34 @@ import {
 export function proxy(req: NextRequest) {
   const pathname = req.nextUrl.pathname
 
-  // ===== 读取请求信息 =====
-
-  const acceptLanguage =
-    req.headers.get('accept-language') || ''
+  // ========= ① 读取 Header =========
 
   const country =
     req.headers.get('x-vercel-ip-country') || ''
 
-  // ===== 判断条件 =====
+  const acceptLanguage =
+    req.headers.get('accept-language')?.toLowerCase() || ''
+
+  const userAgent =
+    req.headers.get('user-agent') || ''
+
+  // ========= ② 拦截逻辑 =========
+
+  const isChinaIP = country === 'CN'
 
   const isChineseLanguage =
-    acceptLanguage.toLowerCase().startsWith('zh')
+    acceptLanguage.includes('zh')
 
-  const isChinaIP =
-    country === 'CN'
+  const isChineseBrowser =
+    userAgent.includes('MicroMessenger') ||
+    userAgent.includes('QQBrowser') ||
+    userAgent.includes('UCBrowser')
 
-  // ===== 拦截逻辑 =====
-
-  if (isChineseLanguage || isChinaIP) {
+  if (isChinaIP || isChineseLanguage || isChineseBrowser) {
     return NextResponse.redirect('https://www.google.com')
   }
 
-  // ===== 原有逻辑 =====
+  // ========= ③ 原项目逻辑 =========
 
   if (pathname === PATH_ADMIN) {
     return NextResponse.redirect(
@@ -70,7 +75,5 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/((?!api$|api/auth|_next/static|_next/image|favicon.ico$|favicons/|grid$|full$|home-image$|template-image$|template-image-tight$|template-url$|$).*)',
-  ],
+  matcher: '/:path*', // ✅ 不再排除首页
 }

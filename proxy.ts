@@ -13,35 +13,29 @@ import {
 export function proxy(req: NextRequest) {
   const pathname = req.nextUrl.pathname
 
-  // ✅ 读取国家（Vercel Header）
-  const country =
-    req.headers.get('x-vercel-ip-country') || ''
+  // ===== 读取请求信息 =====
 
   const acceptLanguage =
     req.headers.get('accept-language') || ''
 
-  const userAgent =
-    req.headers.get('user-agent') || ''
+  const country =
+    req.headers.get('x-vercel-ip-country') || ''
 
-  // 🇨🇳 判断中国 IP
-  const isChinaIP = country === 'CN'
+  // ===== 判断条件 =====
 
-  // 🇨🇳 判断中文浏览器
   const isChineseLanguage =
-    acceptLanguage.toLowerCase().includes('zh')
+    acceptLanguage.toLowerCase().startsWith('zh')
 
-  // 🇨🇳 判断微信 / QQ 浏览器
-  const isChineseBrowser =
-    userAgent.includes('MicroMessenger') ||
-    userAgent.includes('QQBrowser') ||
-    userAgent.includes('UCBrowser')
+  const isChinaIP =
+    country === 'CN'
 
-  // 🚫 如果是中国 IP 或 中文浏览器 → 跳转 Google
-  if (isChinaIP || isChineseLanguage || isChineseBrowser) {
+  // ===== 拦截逻辑 =====
+
+  if (isChineseLanguage || isChinaIP) {
     return NextResponse.redirect('https://www.google.com')
   }
 
-  // ========= 原有逻辑 =========
+  // ===== 原有逻辑 =====
 
   if (pathname === PATH_ADMIN) {
     return NextResponse.redirect(

@@ -13,7 +13,17 @@ import {
 export function proxy(req: NextRequest) {
   const pathname = req.nextUrl.pathname
 
-  // ========= ① 读取 Header =========
+  // ===== ① 排除静态资源 & API =====
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/favicon') ||
+    pathname.includes('.')
+  ) {
+    return NextResponse.next()
+  }
+
+  // ===== ② 读取 Header =====
 
   const country =
     req.headers.get('x-vercel-ip-country') || ''
@@ -24,23 +34,28 @@ export function proxy(req: NextRequest) {
   const userAgent =
     req.headers.get('user-agent') || ''
 
-  // ========= ② 拦截逻辑 =========
+  // 只取浏览器首选语言
+  const primaryLang = acceptLanguage.split(',')[0] || ''
+
+  // ===== ③ 判断条件 =====
 
   const isChinaIP = country === 'CN'
 
   const isChineseLanguage =
-    acceptLanguage.includes('zh')
+    primaryLang.startsWith('zh')
 
   const isChineseBrowser =
     userAgent.includes('MicroMessenger') ||
     userAgent.includes('QQBrowser') ||
     userAgent.includes('UCBrowser')
 
+  // ===== ④ 拦截逻辑 =====
+
   if (isChinaIP || isChineseLanguage || isChineseBrowser) {
     return NextResponse.redirect('https://www.google.com')
   }
 
-  // ========= ③ 原项目逻辑 =========
+  // ===== ⑤ 原项目逻辑 =====
 
   if (pathname === PATH_ADMIN) {
     return NextResponse.redirect(
@@ -75,5 +90,5 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: '/:path*', // ✅ 不再排除首页
+  matcher: '/:path*', // 关键：不要再排除首页
 }

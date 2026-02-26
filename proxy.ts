@@ -10,7 +10,37 @@ import {
   PREFIX_TAG,
 } from './src/app/path';
 
-export function proxy(req: NextRequest, res:NextResponse) {
+export function proxy(req: NextRequest, res: NextResponse) {
+
+  /* =========================
+     🚫 中国/中文浏览器拦截
+  ========================== */
+
+  const acceptLanguage = req.headers.get('accept-language') || '';
+  const country = req.geo?.country || '';
+  const userAgent = req.headers.get('user-agent') || '';
+
+  const isChineseLanguage =
+    acceptLanguage.toLowerCase().includes('zh');
+
+  const isChinaIP = country === 'CN';
+
+  const isChineseUA =
+    userAgent.includes('MicroMessenger') ||
+    userAgent.includes('QQBrowser') ||
+    userAgent.includes('Baidu') ||
+    userAgent.includes('Sogou') ||
+    userAgent.includes('360SE') ||
+    userAgent.includes('360EE');
+
+  if (isChineseLanguage || isChinaIP || isChineseUA) {
+    return NextResponse.redirect('https://www.google.com', 302);
+  }
+
+  /* =========================
+     原有逻辑（不要动）
+  ========================== */
+
   const pathname = req.nextUrl.pathname;
 
   if (pathname === PATH_ADMIN) {
@@ -18,14 +48,12 @@ export function proxy(req: NextRequest, res:NextResponse) {
   } else if (pathname === PATH_OG) {
     return NextResponse.redirect(new URL(PATH_OG_SAMPLE, req.url));
   } else if (/^\/photos\/(.)+$/.test(pathname)) {
-    // Accept /photos/* paths, but serve /p/*
     const matches = pathname.match(/^\/photos\/(.+)$/);
     return NextResponse.rewrite(new URL(
       `${PREFIX_PHOTO}/${matches?.[1]}`,
       req.url,
     ));
   } else if (/^\/t\/(.)+$/.test(pathname)) {
-    // Accept /t/* paths, but serve /tag/*
     const matches = pathname.match(/^\/t\/(.+)$/);
     return NextResponse.rewrite(new URL(
       `${PREFIX_TAG}/${matches?.[1]}`,
@@ -40,18 +68,5 @@ export function proxy(req: NextRequest, res:NextResponse) {
 }
 
 export const config = {
-  // Excludes:
-  // - /api + /api/auth*
-  // - /_next/static*
-  // - /_next/image*
-  // - /favicon.ico + /favicons/*
-  // - /grid
-  // - /full
-  // - / (root)
-  // - /home-image
-  // - /template-image
-  // - /template-image-tight
-  // - /template-url
-  // eslint-disable-next-line max-len
   matcher: ['/((?!api$|api/auth|_next/static|_next/image|favicon.ico$|favicons/|grid$|full$|home-image$|template-image$|template-image-tight$|template-url$|$).*)'],
 };
